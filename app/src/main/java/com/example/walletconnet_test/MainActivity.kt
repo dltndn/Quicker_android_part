@@ -1,7 +1,9 @@
 package com.example.walletconnet_test
 
 import android.content.ActivityNotFoundException
+import android.content.DialogInterface
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
@@ -10,7 +12,11 @@ import android.os.Message
 import android.webkit.*
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.appcompat.app.AlertDialog
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import java.net.URISyntaxException
+import java.util.jar.Manifest
 
 class MainActivity : AppCompatActivity() {
 
@@ -18,11 +24,14 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        val REQUEST_LOCATION_PERMISSION = 100
+
         val myWebView: WebView = findViewById(R.id.webView)
 
         myWebView.settings.javaScriptEnabled = true
         myWebView.settings.domStorageEnabled = true
         myWebView.settings.javaScriptCanOpenWindowsAutomatically = true
+        myWebView.settings.setGeolocationEnabled(true)
         myWebView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(
                 view: WebView?,
@@ -60,8 +69,49 @@ class MainActivity : AppCompatActivity() {
                 resultMsg.sendToTarget()
                 return true
             }
-        }
 
+            // 위치 권한 요청
+            override fun onGeolocationPermissionsShowPrompt(
+                origin: String?,
+                callback: GeolocationPermissions.Callback?
+            ) {
+                if (ContextCompat.checkSelfPermission(
+                        this@MainActivity,
+                        android.Manifest.permission.ACCESS_FINE_LOCATION
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    // 권한이 없는 경우 권한 요청
+                    ActivityCompat.requestPermissions(
+                        this@MainActivity,
+                        arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION),
+                        REQUEST_LOCATION_PERMISSION
+                    )
+                } else {
+                    // 권한이 있는 경우 다이얼로그 보여줌
+                    showLocationPermissionDialog(origin ?: "", callback ?: return)
+                }
+
+            }
+
+            // 위치 권한 요청 다이얼로그
+            private fun showLocationPermissionDialog(
+                origin: String,
+                callback: GeolocationPermissions.Callback
+            ) {
+                val builder = AlertDialog.Builder(this@MainActivity)
+                builder.setMessage("이 앱에 위치사용 권한을 허용하시겠습니까?")
+                    .setCancelable(true)
+                    .setPositiveButton("네") { _: DialogInterface, _: Int ->
+                        callback.invoke(origin, true, true)
+                    }
+                    .setNegativeButton("아니요") { _: DialogInterface, _: Int ->
+                        callback.invoke(origin, false, false)
+                    }
+                val dialog = builder.create()
+                dialog.show()
+            }
+
+        }
         myWebView.loadUrl("https://web-quicker-reactjs-luj2cle2iiwho.sel3.cloudtype.app/")
 
 
