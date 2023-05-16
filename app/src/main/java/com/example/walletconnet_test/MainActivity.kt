@@ -28,6 +28,9 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        val sharedPref = getSharedPreferences("QuickerPref", Context.MODE_PRIVATE)
+        val editor = sharedPref.edit()
+
         val REQUEST_LOCATION_PERMISSION = 100
         val chooserIntent = Intent(Intent.ACTION_GET_CONTENT)
         chooserIntent.type = "image/*"
@@ -66,13 +69,25 @@ class MainActivity : AppCompatActivity() {
                     // 인텐트 필터 등록
                     val quickerUri = Uri.parse(deepLink)
                     val quickerIntent = Intent(Intent.ACTION_VIEW, quickerUri)
-                    val data = quickerIntent.data?.getQueryParameter("walletAddress")
-                    Log.i("wallet", data.toString())
+                    val walletAddress = quickerIntent.data?.getQueryParameter("walletAddress")
+                    val isDelivering = quickerIntent.data?.getQueryParameter("isDelivering")
+                    Log.i("wallet", walletAddress.toString())
+                    Log.i("isDelivering", isDelivering.toString())
+                    if (isDelivering.toString() == "true") {
+                        editor.putBoolean("q_isDelivering", true)
+                        editor.apply()
+                    } else if (isDelivering.toString() == "false") {
+                        editor.putBoolean("q_isDelivering", false)
+                        editor.apply()
+                    }
                     return true
                 }
                 return super.shouldOverrideUrlLoading(view, request)
             }
         }
+        // 배송 여부 값 불러오는 코드(2번째 인자는 데이터가 null일 때 반환 값)
+//        val value3 = sharedPref.getBoolean("q_isDelivering", false)
+//        Log.i("stored_isDelivering", value3.toString())
 
         myWebView.webChromeClient = object : WebChromeClient() {
             override fun onCreateWindow(
