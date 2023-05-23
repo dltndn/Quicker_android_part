@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
+import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.os.Looper
@@ -25,41 +26,59 @@ class LocationService : Service() {
     val LOCATION_SERVICE_ID = 175
     val ACTION_START_LOCATION_SERVICE = "startLocationService"
     val ACTION_STOP_LOCATION_SERVICE = "stopLocationService"
+    var isLocationUpdatesActive = false
 
-    private val mLocationCallback = object : LocationCallback() {
+    private var mLocationCallback = object : LocationCallback() {
         override fun onLocationResult(p0: LocationResult) {
-            Log.i("LocationService", "onLocationResult")
-            if (p0 !== null) {
-                super.onLocationResult(p0)
-            }
-            if (p0 !== null && p0.lastLocation !== null) {
-                val latitude = p0.lastLocation.latitude
-                val longitude = p0.lastLocation.longitude
-                Log.v("LOCATION_UPDATE", "$latitude, $longitude")
+            Log.i("isLocationUpdatesActive", isLocationUpdatesActive.toString())
+            if (isLocationUpdatesActive) {
+                if (p0 !== null) {
+                    super.onLocationResult(p0)
+                }
+                if (p0 !== null && p0.lastLocation !== null) {
+                    val latitude = p0.lastLocation.latitude
+                    val longitude = p0.lastLocation.longitude
+                    Log.v("LOCATION_UPDATE", "$latitude, $longitude")
+                }
             }
         }
     }
 
+    inner class LocalBinder : Binder() {
+        fun getServiceInstance(): LocationService {
+            return this@LocationService
+        }
+    }
+
+    private val binder = LocalBinder()
+
     @Nullable
     override fun onBind(intent: Intent): IBinder? {
-        throw UnsupportedOperationException("Not yet implemented")
+//        throw UnsupportedOperationException("Not yet implemented")
+        return binder
     }
 
     private fun startLocationService() {
+        isLocationUpdatesActive = true
         val channelId = "location_notification_channel"
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val resultIntent = Intent()
         val pendingIntent = PendingIntent.getActivity(
-            applicationContext,
+            this,
             0,
             resultIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+
         )
-        val builder = NotificationCompat.Builder(applicationContext, channelId)
-            .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("Location Service")
+        val builder = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(R.drawable.casual_life_3d_cardboard_boxes)
+            .setContentTitle("Quicker")
             .setDefaults(NotificationCompat.DEFAULT_ALL)
-            .setContentText("Running")
+            .setContentText("의뢰인에게 위치를 전송중입니다...")
             .setContentIntent(pendingIntent)
             .setAutoCancel(false)
             .setPriority(NotificationCompat.PRIORITY_MAX)
@@ -97,9 +116,13 @@ class LocationService : Service() {
         startForeground(LOCATION_SERVICE_ID, builder.build())
     }
 
+
     private fun stopLocationService() {
+        isLocationUpdatesActive = false
+        Log.i("LocationService", "stopLocationService")
         LocationServices.getFusedLocationProviderClient(this)
             .removeLocationUpdates(mLocationCallback)
+//        mLocationCallback = null
         stopForeground(true)
         stopSelf()
     }
@@ -114,4 +137,5 @@ class LocationService : Service() {
         }
         return START_STICKY_COMPATIBILITY
     }
+
 }

@@ -4,11 +4,8 @@ import android.app.Activity
 import android.content.*
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
+import android.os.*
 import androidx.appcompat.app.AppCompatActivity
-import android.os.Bundle
-import android.os.Message
-import android.os.PatternMatcher
 import android.provider.MediaStore
 import android.provider.SyncStateContract.Constants
 import android.util.Log
@@ -30,20 +27,44 @@ class MainActivity : AppCompatActivity() {
     val ACTION_STOP_LOCATION_SERVICE = "stopLocationService"
 
     //test s
+    private var locationService: LocationService? = null
 
     private fun startBackgroundService() {
-        val serviceIntent = Intent(this@MainActivity, BackgroundService::class.java)
-//        serviceIntent.action = "1"
+        val serviceIntent = Intent(this@MainActivity, LocationService::class.java)
+        serviceIntent.action = "1"
         startService(serviceIntent)
+        // 서비스 바인딩
+        bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE)
         Log.i("background", "startLocationService")
     }
 
     private fun stopBackgroundService() {
-        val serviceIntent = Intent(this@MainActivity, BackgroundService::class.java)
-//        serviceIntent.action = "2"
-        stopService(serviceIntent)
-        Log.i("background", "stopLocationService")
+        if (locationService != null) {
+            val serviceIntent = Intent(this@MainActivity, LocationService::class.java)
+            serviceIntent.action = "2"
+            // 서비스 바인딩 해제
+            unbindService(serviceConnection)
+            locationService = null
+            stopService(serviceIntent)
+            locationService!!.isLocationUpdatesActive = false
+            Log.i("background", "stopLocationService")
+        }
     }
+
+    // LocationService와 바인딩 및 연결을 관리하는 서비스 커넥션
+    private val serviceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            val binder = service as LocationService.LocalBinder
+            locationService = binder.getServiceInstance()
+            locationService!!.isLocationUpdatesActive = true
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            locationService!!.isLocationUpdatesActive = false
+            locationService = null
+        }
+    }
+
     // test e
 
     override fun onCreate(savedInstanceState: Bundle?) {
