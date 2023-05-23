@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.os.Message
 import android.os.PatternMatcher
 import android.provider.MediaStore
+import android.provider.SyncStateContract.Constants
 import android.util.Log
 import android.webkit.*
 import android.widget.Toast
@@ -19,10 +20,31 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import java.net.URISyntaxException
 import java.util.jar.Manifest
+import java.util.*
 
 class MainActivity : AppCompatActivity() {
     private val REQUEST_SELECT_FILE = 100
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
+    private var locationCallback: GeolocationPermissions.Callback? = null
+    val ACTION_START_LOCATION_SERVICE = "startLocationService"
+    val ACTION_STOP_LOCATION_SERVICE = "stopLocationService"
+
+    //test s
+
+    private fun startBackgroundService() {
+        val serviceIntent = Intent(this@MainActivity, BackgroundService::class.java)
+//        serviceIntent.action = "1"
+        startService(serviceIntent)
+        Log.i("background", "startLocationService")
+    }
+
+    private fun stopBackgroundService() {
+        val serviceIntent = Intent(this@MainActivity, BackgroundService::class.java)
+//        serviceIntent.action = "2"
+        stopService(serviceIntent)
+        Log.i("background", "stopLocationService")
+    }
+    // test e
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,7 +62,6 @@ class MainActivity : AppCompatActivity() {
 
         val intent = Intent.createChooser(chooserIntent, "Choose Image")
         intent.putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(fileIntent))
-        // e
 
         val myWebView: WebView = findViewById(R.id.webView)
 
@@ -76,9 +97,13 @@ class MainActivity : AppCompatActivity() {
                     if (isDelivering.toString() == "true") {
                         editor.putBoolean("q_isDelivering", true)
                         editor.apply()
+                        // 백그라운드에서 주기적으로 위치 정보를 얻어오는 함수
+                        startBackgroundService()
                     } else if (isDelivering.toString() == "false") {
                         editor.putBoolean("q_isDelivering", false)
                         editor.apply()
+                        // 백그라운드에서 주기적으로 위치 정보를 얻어오는 함수 끝내기
+                        stopBackgroundService()
                     }
                     return true
                 }
@@ -114,6 +139,7 @@ class MainActivity : AppCompatActivity() {
                 origin: String?,
                 callback: GeolocationPermissions.Callback?
             ) {
+                locationCallback = callback
                 if (ContextCompat.checkSelfPermission(
                         this@MainActivity,
                         android.Manifest.permission.ACCESS_FINE_LOCATION
@@ -125,9 +151,20 @@ class MainActivity : AppCompatActivity() {
                         arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION),
                         REQUEST_LOCATION_PERMISSION
                     )
-                } else {
-                    // 권한이 있는 경우 다이얼로그 보여줌
                     showLocationPermissionDialog(origin ?: "", callback ?: return)
+                } else if (ContextCompat.checkSelfPermission(
+                        this@MainActivity,
+                        android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
+                ) != PackageManager.PERMISSION_GRANTED) {
+                    // 권한이 없는 경우 권한 요청
+                    ActivityCompat.requestPermissions(
+                        this@MainActivity,
+                        arrayOf(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION),
+                        REQUEST_LOCATION_PERMISSION
+                    )
+                    showLocationPermissionDialog(origin ?: "", callback ?: return)
+                } else {
+                    Log.i("test", "what?")
                 }
 
             }
@@ -177,6 +214,9 @@ class MainActivity : AppCompatActivity() {
         myWebView.loadUrl("https://web-quicker-reactjs-luj2cle2iiwho.sel3.cloudtype.app/")
 
     }
+
+
+
     //
     // 파일 선택 다이얼로그에서 선택한 결과를 처리한다.
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
