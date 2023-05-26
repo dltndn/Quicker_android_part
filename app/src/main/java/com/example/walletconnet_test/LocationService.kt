@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Binder
@@ -25,13 +26,29 @@ import com.google.android.gms.location.LocationCallback
 class LocationService : Service() {
     val LOCATION_SERVICE_ID = 175
     val ACTION_START_LOCATION_SERVICE = "startLocationService"
-    val ACTION_STOP_LOCATION_SERVICE = "stopLocationService"
-    var isLocationUpdatesActive = false
+//    val ACTION_STOP_LOCATION_SERVICE = "stopLocationService"
+    private lateinit var notificationManager: NotificationManager
+    private lateinit var builder: NotificationCompat.Builder
+    private lateinit var sharedPref: SharedPreferences
+    val notiContextDelivering = "물품을 배달 중이세요. 마감기한을 지켜주세요!"
+    val notiContextClient = "배송원이 물품을 배달 중입니다... "
+
+    override fun onCreate() {
+        super.onCreate()
+        sharedPref = getSharedPreferences("QuickerPref", Context.MODE_PRIVATE)
+    }
 
     private var mLocationCallback = object : LocationCallback() {
+        var preIsLocationUpdatesActive = false
         override fun onLocationResult(p0: LocationResult) {
+            // 배송 여부 값 불러오는 코드(2번째 인자는 데이터가 null일 때 반환 값)
+            val isLocationUpdatesActive = sharedPref.getBoolean("q_isDelivering", false)
             Log.i("isLocationUpdatesActive", isLocationUpdatesActive.toString())
             if (isLocationUpdatesActive) {
+                if (!preIsLocationUpdatesActive) {
+                    updateNotificationContentText(notiContextDelivering)
+                    preIsLocationUpdatesActive = true
+                }
                 if (p0 !== null) {
                     super.onLocationResult(p0)
                 }
@@ -40,28 +57,23 @@ class LocationService : Service() {
                     val longitude = p0.lastLocation.longitude
                     Log.v("LOCATION_UPDATE", "$latitude, $longitude")
                 }
+            } else {
+                if (preIsLocationUpdatesActive) {
+                    updateNotificationContentText(notiContextClient)
+                    preIsLocationUpdatesActive = false
+                }
             }
         }
     }
 
-    inner class LocalBinder : Binder() {
-        fun getServiceInstance(): LocationService {
-            return this@LocationService
-        }
-    }
-
-    private val binder = LocalBinder()
-
     @Nullable
     override fun onBind(intent: Intent): IBinder? {
-//        throw UnsupportedOperationException("Not yet implemented")
-        return binder
+        return null
     }
 
     private fun startLocationService() {
-        isLocationUpdatesActive = true
         val channelId = "location_notification_channel"
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val resultIntent = Intent()
         val pendingIntent = PendingIntent.getActivity(
             this,
@@ -74,11 +86,11 @@ class LocationService : Service() {
             }
 
         )
-        val builder = NotificationCompat.Builder(this, channelId)
+        builder = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(R.drawable.casual_life_3d_cardboard_boxes)
             .setContentTitle("Quicker")
             .setDefaults(NotificationCompat.DEFAULT_ALL)
-            .setContentText("의뢰인에게 위치를 전송중입니다...")
+            .setContentText("Quicker를 실행 중입니다...")
             .setContentIntent(pendingIntent)
             .setAutoCancel(false)
             .setPriority(NotificationCompat.PRIORITY_MAX)
@@ -116,26 +128,31 @@ class LocationService : Service() {
         startForeground(LOCATION_SERVICE_ID, builder.build())
     }
 
+    private fun updateNotificationContentText(contentText: String) {
+        builder.setContentText(contentText)
 
-    private fun stopLocationService() {
-        isLocationUpdatesActive = false
-        Log.i("LocationService", "stopLocationService")
-        LocationServices.getFusedLocationProviderClient(this)
-            .removeLocationUpdates(mLocationCallback)
-//        mLocationCallback = null
-        stopForeground(true)
-        stopSelf()
+        notificationManager.notify(LOCATION_SERVICE_ID, builder.build())
     }
+
+//    private fun stopLocationService() {
+//        isLocationUpdatesActive = false
+//        Log.i("LocationService", "stopLocationService")
+//        LocationServices.getFusedLocationProviderClient(this)
+//            .removeLocationUpdates(mLocationCallback)
+////        mLocationCallback = null
+//        stopForeground(true)
+//        stopSelf()
+//    }
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         Log.i("LocationService", "onStartCommand")
         if (intent.action != null) {
             when (intent.action) {
-                "1" -> startLocationService()
-                "2" -> stopLocationService()
+                ACTION_START_LOCATION_SERVICE -> startLocationService()
+//                ACTION_STOP_LOCATION_SERVICE -> stopLocationService()
             }
         }
-        return START_STICKY_COMPATIBILITY
+        return START_STICKY_COMPATIBILITY //서비스가 강제로 종료되더라도 시스템이 재시작하도록 설정
     }
 
 }

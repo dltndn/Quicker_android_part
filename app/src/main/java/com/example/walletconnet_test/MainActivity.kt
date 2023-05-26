@@ -31,39 +31,39 @@ class MainActivity : AppCompatActivity() {
 
     private fun startBackgroundService() {
         val serviceIntent = Intent(this@MainActivity, LocationService::class.java)
-        serviceIntent.action = "1"
+        serviceIntent.action = ACTION_START_LOCATION_SERVICE
         startService(serviceIntent)
         // 서비스 바인딩
-        bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE)
+//        bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE)
         Log.i("background", "startLocationService")
     }
 
-    private fun stopBackgroundService() {
-        if (locationService != null) {
-            val serviceIntent = Intent(this@MainActivity, LocationService::class.java)
-            serviceIntent.action = "2"
-            // 서비스 바인딩 해제
-            unbindService(serviceConnection)
-            locationService = null
-            stopService(serviceIntent)
-            locationService!!.isLocationUpdatesActive = false
-            Log.i("background", "stopLocationService")
-        }
-    }
+//    private fun stopBackgroundService() {
+//        if (locationService != null) {
+//            val serviceIntent = Intent(this@MainActivity, LocationService::class.java)
+//            serviceIntent.action = ACTION_STOP_LOCATION_SERVICE
+//            // 서비스 바인딩 해제
+//            unbindService(serviceConnection)
+//            stopService(serviceIntent)
+//            locationService?.isLocationUpdatesActive = false
+//            locationService = null
+//            Log.i("background", "stopLocationService")
+//        }
+//    }
 
     // LocationService와 바인딩 및 연결을 관리하는 서비스 커넥션
-    private val serviceConnection = object : ServiceConnection {
-        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-            val binder = service as LocationService.LocalBinder
-            locationService = binder.getServiceInstance()
-            locationService!!.isLocationUpdatesActive = true
-        }
-
-        override fun onServiceDisconnected(name: ComponentName?) {
-            locationService!!.isLocationUpdatesActive = false
-            locationService = null
-        }
-    }
+//    private val serviceConnection = object : ServiceConnection {
+//        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+//            val binder = service as LocationService.LocalBinder
+//            locationService = binder.getServiceInstance()
+//            locationService!!.isLocationUpdatesActive = true
+//        }
+//
+//        override fun onServiceDisconnected(name: ComponentName?) {
+//            locationService!!.isLocationUpdatesActive = false
+//            locationService = null
+//        }
+//    }
 
     // test e
 
@@ -73,6 +73,9 @@ class MainActivity : AppCompatActivity() {
 
         val sharedPref = getSharedPreferences("QuickerPref", Context.MODE_PRIVATE)
         val editor = sharedPref.edit()
+
+        // 백그라운드에서 주기적으로 위치 정보를 얻어오는 함수
+        startBackgroundService()
 
         val REQUEST_LOCATION_PERMISSION = 100
         val chooserIntent = Intent(Intent.ACTION_GET_CONTENT)
@@ -118,13 +121,9 @@ class MainActivity : AppCompatActivity() {
                     if (isDelivering.toString() == "true") {
                         editor.putBoolean("q_isDelivering", true)
                         editor.apply()
-                        // 백그라운드에서 주기적으로 위치 정보를 얻어오는 함수
-                        startBackgroundService()
                     } else if (isDelivering.toString() == "false") {
                         editor.putBoolean("q_isDelivering", false)
                         editor.apply()
-                        // 백그라운드에서 주기적으로 위치 정보를 얻어오는 함수 끝내기
-                        stopBackgroundService()
                     }
                     return true
                 }
