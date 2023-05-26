@@ -134,16 +134,6 @@ class LocationService : Service() {
         notificationManager.notify(LOCATION_SERVICE_ID, builder.build())
     }
 
-//    private fun stopLocationService() {
-//        isLocationUpdatesActive = false
-//        Log.i("LocationService", "stopLocationService")
-//        LocationServices.getFusedLocationProviderClient(this)
-//            .removeLocationUpdates(mLocationCallback)
-////        mLocationCallback = null
-//        stopForeground(true)
-//        stopSelf()
-//    }
-
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         Log.i("LocationService", "onStartCommand")
         if (intent.action != null) {

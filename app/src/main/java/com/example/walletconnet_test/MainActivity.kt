@@ -24,48 +24,17 @@ class MainActivity : AppCompatActivity() {
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
     private var locationCallback: GeolocationPermissions.Callback? = null
     val ACTION_START_LOCATION_SERVICE = "startLocationService"
-    val ACTION_STOP_LOCATION_SERVICE = "stopLocationService"
+//    val ACTION_STOP_LOCATION_SERVICE = "stopLocationService"
 
-    //test s
     private var locationService: LocationService? = null
 
     private fun startBackgroundService() {
         val serviceIntent = Intent(this@MainActivity, LocationService::class.java)
         serviceIntent.action = ACTION_START_LOCATION_SERVICE
         startService(serviceIntent)
-        // 서비스 바인딩
-//        bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE)
         Log.i("background", "startLocationService")
     }
 
-//    private fun stopBackgroundService() {
-//        if (locationService != null) {
-//            val serviceIntent = Intent(this@MainActivity, LocationService::class.java)
-//            serviceIntent.action = ACTION_STOP_LOCATION_SERVICE
-//            // 서비스 바인딩 해제
-//            unbindService(serviceConnection)
-//            stopService(serviceIntent)
-//            locationService?.isLocationUpdatesActive = false
-//            locationService = null
-//            Log.i("background", "stopLocationService")
-//        }
-//    }
-
-    // LocationService와 바인딩 및 연결을 관리하는 서비스 커넥션
-//    private val serviceConnection = object : ServiceConnection {
-//        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-//            val binder = service as LocationService.LocalBinder
-//            locationService = binder.getServiceInstance()
-//            locationService!!.isLocationUpdatesActive = true
-//        }
-//
-//        override fun onServiceDisconnected(name: ComponentName?) {
-//            locationService!!.isLocationUpdatesActive = false
-//            locationService = null
-//        }
-//    }
-
-    // test e
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -130,9 +99,6 @@ class MainActivity : AppCompatActivity() {
                 return super.shouldOverrideUrlLoading(view, request)
             }
         }
-        // 배송 여부 값 불러오는 코드(2번째 인자는 데이터가 null일 때 반환 값)
-//        val value3 = sharedPref.getBoolean("q_isDelivering", false)
-//        Log.i("stored_isDelivering", value3.toString())
 
         myWebView.webChromeClient = object : WebChromeClient() {
             override fun onCreateWindow(
@@ -234,9 +200,6 @@ class MainActivity : AppCompatActivity() {
         myWebView.loadUrl("https://web-quicker-reactjs-luj2cle2iiwho.sel3.cloudtype.app/")
 
     }
-
-
-
     //
     // 파일 선택 다이얼로그에서 선택한 결과를 처리한다.
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
