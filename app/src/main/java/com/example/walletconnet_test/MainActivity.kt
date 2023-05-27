@@ -96,6 +96,13 @@ class MainActivity : AppCompatActivity() {
                     }
                     return true
                 }
+                if (request?.url?.toString()?.startsWith("https:") == true) {
+                    val wcUri = Uri.parse(deepLink)
+                    val httpsIntent = Intent(Intent.ACTION_VIEW, wcUri)
+                    httpsIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    startActivity(httpsIntent)
+                    return true
+                }
                 return super.shouldOverrideUrlLoading(view, request)
             }
         }
