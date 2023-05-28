@@ -21,12 +21,13 @@ import java.util.*
 
 class MainActivity : AppCompatActivity() {
     private val REQUEST_SELECT_FILE = 100
+    private val REQUEST_LOCATION_PERMISSION = 100
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
     private var locationCallback: GeolocationPermissions.Callback? = null
     val ACTION_START_LOCATION_SERVICE = "startLocationService"
 //    val ACTION_STOP_LOCATION_SERVICE = "stopLocationService"
 
-    private var locationService: LocationService? = null
+//    private var locationService: LocationService? = null
 
     private fun startBackgroundService() {
         val serviceIntent = Intent(this@MainActivity, LocationService::class.java)
@@ -43,10 +44,6 @@ class MainActivity : AppCompatActivity() {
         val sharedPref = getSharedPreferences("QuickerPref", Context.MODE_PRIVATE)
         val editor = sharedPref.edit()
 
-        // 백그라운드에서 주기적으로 위치 정보를 얻어오는 함수
-        startBackgroundService()
-
-        val REQUEST_LOCATION_PERMISSION = 100
         val chooserIntent = Intent(Intent.ACTION_GET_CONTENT)
         chooserIntent.type = "image/*"
 
@@ -55,6 +52,19 @@ class MainActivity : AppCompatActivity() {
 
         val intent = Intent.createChooser(chooserIntent, "Choose Image")
         intent.putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(fileIntent))
+
+        // 위치 권한 요청
+        if (ContextCompat.checkSelfPermission(
+                this@MainActivity,
+                android.Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this@MainActivity,
+                arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION),
+                REQUEST_LOCATION_PERMISSION
+            )
+        }
 
         val myWebView: WebView = findViewById(R.id.webView)
 
@@ -144,8 +154,9 @@ class MainActivity : AppCompatActivity() {
                         arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION),
                         REQUEST_LOCATION_PERMISSION
                     )
-                    showLocationPermissionDialog(origin ?: "", callback ?: return)
-                } else if (ContextCompat.checkSelfPermission(
+                    locationCallback?.invoke(origin, true, true)
+                }
+                if (ContextCompat.checkSelfPermission(
                         this@MainActivity,
                         android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
                 ) != PackageManager.PERMISSION_GRANTED) {
@@ -155,29 +166,12 @@ class MainActivity : AppCompatActivity() {
                         arrayOf(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION),
                         REQUEST_LOCATION_PERMISSION
                     )
-                    showLocationPermissionDialog(origin ?: "", callback ?: return)
+                    locationCallback?.invoke(origin, true, true)
                 } else {
                     Log.i("test", "what?")
                 }
-
-            }
-
-            // 위치 권한 요청 다이얼로그
-            private fun showLocationPermissionDialog(
-                origin: String,
-                callback: GeolocationPermissions.Callback
-            ) {
-                val builder = AlertDialog.Builder(this@MainActivity)
-                builder.setMessage("이 앱에 위치사용 권한을 허용하시겠습니까?")
-                    .setCancelable(true)
-                    .setPositiveButton("네") { _: DialogInterface, _: Int ->
-                        callback.invoke(origin, true, true)
-                    }
-                    .setNegativeButton("아니요") { _: DialogInterface, _: Int ->
-                        callback.invoke(origin, false, false)
-                    }
-                val dialog = builder.create()
-                dialog.show()
+                // 백그라운드에서 주기적으로 위치 정보를 얻어오는 함수
+                startBackgroundService()
             }
 
             val activity: Activity = this@MainActivity
@@ -207,6 +201,23 @@ class MainActivity : AppCompatActivity() {
         myWebView.loadUrl("https://web-quicker-reactjs-luj2cle2iiwho.sel3.cloudtype.app/")
 
     }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_LOCATION_PERMISSION) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                startBackgroundService()
+            } else {
+                Toast.makeText(this@MainActivity, "위치 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
+                finish()
+            }
+        }
+    }
+
     //
     // 파일 선택 다이얼로그에서 선택한 결과를 처리한다.
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
