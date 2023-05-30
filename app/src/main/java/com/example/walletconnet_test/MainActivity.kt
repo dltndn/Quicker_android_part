@@ -1,6 +1,9 @@
 package com.example.walletconnet_test
 
 import android.app.Activity
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.*
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -14,6 +17,7 @@ import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import java.net.URISyntaxException
 import java.util.jar.Manifest
@@ -29,11 +33,56 @@ class MainActivity : AppCompatActivity() {
 
 //    private var locationService: LocationService? = null
 
+    private lateinit var notificationManager: NotificationManager
+    private lateinit var builderT: NotificationCompat.Builder
+
     private fun startBackgroundService() {
         val serviceIntent = Intent(this@MainActivity, LocationService::class.java)
         serviceIntent.action = ACTION_START_LOCATION_SERVICE
         startService(serviceIntent)
         Log.i("background", "startLocationService")
+    }
+
+    private fun alertNotification(contentString: String) {
+        Log.i("testNoti", "alertNotificationtest()")
+        notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channelId = "test_notification_channel"
+        val resultIntent = Intent()
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            resultIntent,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+
+        )
+
+        builderT = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(R.drawable.casual_life_3d_cardboard_boxes)
+            .setContentTitle("Quicker")
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setContentText(contentString)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (notificationManager.getNotificationChannel(channelId) == null) {
+                val notificationChannel = NotificationChannel(
+                    channelId,
+                    "Location Service",
+                    NotificationManager.IMPORTANCE_HIGH
+                )
+                notificationChannel.description = "This channel is used by test"
+                notificationManager.createNotificationChannel(notificationChannel)
+            }
+        }
+
+        val notificationId = 176
+        notificationManager.notify(notificationId, builderT.build())
     }
 
 
@@ -64,6 +113,9 @@ class MainActivity : AppCompatActivity() {
                 arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION),
                 REQUEST_LOCATION_PERMISSION
             )
+            startBackgroundService()
+        } else {
+            startBackgroundService()
         }
 
         val myWebView: WebView = findViewById(R.id.webView)
@@ -95,6 +147,9 @@ class MainActivity : AppCompatActivity() {
                     val quickerIntent = Intent(Intent.ACTION_VIEW, quickerUri)
                     val walletAddress = quickerIntent.data?.getQueryParameter("walletAddress")
                     val isDelivering = quickerIntent.data?.getQueryParameter("isDelivering")
+                    val isMatchedOrder = quickerIntent.data?.getQueryParameter("isMatchedOrder")
+                    val isDeliveredOrder = quickerIntent.data?.getQueryParameter("isDeliveredOrder")
+                    val isCompletedOrder = quickerIntent.data?.getQueryParameter("isCompletedOrder")
                     Log.i("wallet", walletAddress.toString())
                     Log.i("isDelivering", isDelivering.toString())
                     if (isDelivering.toString() == "true") {
@@ -103,6 +158,15 @@ class MainActivity : AppCompatActivity() {
                     } else if (isDelivering.toString() == "false") {
                         editor.putBoolean("q_isDelivering", false)
                         editor.apply()
+                    }
+                    if (isMatchedOrder.toString() == "true") {
+                        alertNotification("배송원이 오더를 수락하였습니다. 오더 내역을 확인해보세요!")
+                    }
+                    if (isDeliveredOrder.toString() == "true") {
+                        alertNotification("배송원이 배송을 완료하였습니다. 오더 내역을 확인해보세요!")
+                    }
+                    if (isCompletedOrder.toString() == "true") {
+                        alertNotification("의뢰인이 계약을 확정했습니다. 수행 내역을 확인해보세요!")
                     }
                     return true
                 }
