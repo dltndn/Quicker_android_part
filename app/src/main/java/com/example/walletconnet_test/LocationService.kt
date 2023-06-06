@@ -41,6 +41,14 @@ class LocationService : Service() {
     private var mLocationCallback = object : LocationCallback() {
         var preIsLocationUpdatesActive = false
         override fun onLocationResult(p0: LocationResult) {
+            // test s
+            // SendLocationToServer 인스턴스 생성
+            val sendLocationToServer = SendLocationToServer()
+
+            // 사용자 정보 요청
+            val walletAddress = "0x2cC285279f6970d00F84f3034439ab8D29D04d97"
+            sendLocationToServer.fetchUser(walletAddress)
+            // test e
             // 배송 여부 값 불러오는 코드(2번째 인자는 데이터가 null일 때 반환 값)
             val isLocationUpdatesActive = sharedPref.getBoolean("q_isDelivering", false)
             Log.i("isLocationUpdatesActive", isLocationUpdatesActive.toString())
