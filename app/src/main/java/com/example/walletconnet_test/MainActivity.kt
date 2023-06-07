@@ -181,6 +181,13 @@ class MainActivity : AppCompatActivity() {
                     startActivity(httpsIntent)
                     return true
                 }
+                if (request?.url?.toString()?.startsWith("nmap:") == true) {
+                    val nmapUri = Uri.parse(deepLink)
+                    val nmapIntent = Intent(Intent.ACTION_VIEW, nmapUri)
+                    nmapIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    startActivity(nmapIntent)
+                    return true
+                }
                 return super.shouldOverrideUrlLoading(view, request)
             }
         }
