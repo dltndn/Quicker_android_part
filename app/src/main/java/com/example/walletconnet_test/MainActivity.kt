@@ -152,6 +152,10 @@ class MainActivity : AppCompatActivity() {
                     val isCompletedOrder = quickerIntent.data?.getQueryParameter("isCompletedOrder")
                     Log.i("wallet", walletAddress.toString())
                     Log.i("isDelivering", isDelivering.toString())
+                    if (walletAddress != null) {
+                        editor.putString("q_walletAddress", walletAddress.toString())
+                        editor.apply()
+                    }
                     if (isDelivering.toString() == "true") {
                         editor.putBoolean("q_isDelivering", true)
                         editor.apply()
@@ -264,6 +268,10 @@ class MainActivity : AppCompatActivity() {
         }
         myWebView.loadUrl("https://web-quicker-reactjs-luj2cle2iiwho.sel3.cloudtype.app/")
 
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
     }
 
     override fun onRequestPermissionsResult(

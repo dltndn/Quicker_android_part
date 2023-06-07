@@ -32,6 +32,7 @@ class LocationService : Service() {
     private lateinit var sharedPref: SharedPreferences
     val notiContextDelivering = "물품을 배달 중이세요. 마감기한을 지켜주세요!"
     val notiContextClient = "배송원이 물품을 배달 중입니다... "
+    var walletAddress= "0x2cC285279f6970d00F84f3034439ab8D29D04d97"
 
     override fun onCreate() {
         super.onCreate()
@@ -41,16 +42,10 @@ class LocationService : Service() {
     private var mLocationCallback = object : LocationCallback() {
         var preIsLocationUpdatesActive = false
         override fun onLocationResult(p0: LocationResult) {
-            // test s
-            // SendLocationToServer 인스턴스 생성
-            val sendLocationToServer = SendLocationToServer()
 
-            // 사용자 정보 요청
-            val walletAddress = "0x2cC285279f6970d00F84f3034439ab8D29D04d97"
-            sendLocationToServer.fetchUser(walletAddress)
-            // test e
             // 배송 여부 값 불러오는 코드(2번째 인자는 데이터가 null일 때 반환 값)
             val isLocationUpdatesActive = sharedPref.getBoolean("q_isDelivering", false)
+            val walletAddress = sharedPref.getString("q_walletAddress", "")
             Log.i("isLocationUpdatesActive", isLocationUpdatesActive.toString())
             if (isLocationUpdatesActive) {
                 if (!preIsLocationUpdatesActive) {
@@ -64,6 +59,15 @@ class LocationService : Service() {
                     val latitude = p0.lastLocation.latitude
                     val longitude = p0.lastLocation.longitude
                     Log.v("LOCATION_UPDATE", "$latitude, $longitude")
+
+                    val sendLocationToServer = SendLocationToServer()
+
+                    // 사용자 정보 요청
+                    if(walletAddress != "") {
+                        if (walletAddress != null) {
+                            sendLocationToServer.fetchUser(walletAddress, latitude, longitude)
+                        }
+                    }
                 }
             } else {
                 if (preIsLocationUpdatesActive) {
@@ -116,8 +120,8 @@ class LocationService : Service() {
         }
 
         val locationRequest = LocationRequest.create().apply {
-            interval = 4000
-            fastestInterval = 2000
+            interval = 7000
+            fastestInterval = 5000
             priority = LocationRequest.PRIORITY_HIGH_ACCURACY
         }
 
