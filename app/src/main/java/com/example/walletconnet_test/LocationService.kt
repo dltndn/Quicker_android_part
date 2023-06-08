@@ -26,16 +26,18 @@ import com.google.android.gms.location.LocationCallback
 class LocationService : Service() {
     val LOCATION_SERVICE_ID = 175
     val ACTION_START_LOCATION_SERVICE = "startLocationService"
-//    val ACTION_STOP_LOCATION_SERVICE = "stopLocationService"
+    val ACTION_STOP_LOCATION_SERVICE = "stopLocationService"
     private lateinit var notificationManager: NotificationManager
     private lateinit var builder: NotificationCompat.Builder
     private lateinit var sharedPref: SharedPreferences
     val notiContextDelivering = "물품을 배달 중이세요. 마감기한을 지켜주세요!"
     val notiContextClient = "배송원이 물품을 배달 중입니다... "
     var walletAddress= "0x2cC285279f6970d00F84f3034439ab8D29D04d97"
+    private var SERVICE_START_ID = 0
 
     override fun onCreate() {
         super.onCreate()
+        Log.i("LocationService", "onCreate")
         sharedPref = getSharedPreferences("QuickerPref", Context.MODE_PRIVATE)
     }
 
@@ -47,6 +49,7 @@ class LocationService : Service() {
             val isLocationUpdatesActive = sharedPref.getBoolean("q_isDelivering", false)
             val walletAddress = sharedPref.getString("q_walletAddress", "")
             Log.i("isLocationUpdatesActive", isLocationUpdatesActive.toString())
+            Log.i("LocationService", "onLocationResult")
             if (isLocationUpdatesActive) {
                 if (!preIsLocationUpdatesActive) {
                     updateNotificationContentText(notiContextDelivering)
@@ -58,13 +61,14 @@ class LocationService : Service() {
                 if (p0 !== null && p0.lastLocation !== null) {
                     val latitude = p0.lastLocation.latitude
                     val longitude = p0.lastLocation.longitude
-                    Log.v("LOCATION_UPDATE", "$latitude, $longitude")
 
                     val sendLocationToServer = SendLocationToServer()
 
-                    // 사용자 정보 요청
+                    // 사용자 위치 정보 전송
                     if(walletAddress != "") {
                         if (walletAddress != null) {
+                            Log.v("LOCATION_UPDATE", "$latitude, $longitude")
+                            Log.v("LOCATION_UPDATE", walletAddress)
                             sendLocationToServer.fetchUser(walletAddress, latitude, longitude)
                         }
                     }
@@ -135,9 +139,19 @@ class LocationService : Service() {
         ) {
             return
         }
-        LocationServices.getFusedLocationProviderClient(this)
-            .requestLocationUpdates(locationRequest, mLocationCallback, Looper.myLooper()!!)
         startForeground(LOCATION_SERVICE_ID, builder.build())
+        LocationServices.getFusedLocationProviderClient(this)
+            .requestLocationUpdates(locationRequest, mLocationCallback, Looper.getMainLooper())
+    }
+
+    private fun stopLocationService() {
+        Log.i("LocationService", "stopLocationService from Service")
+        val editor = sharedPref.edit()
+        editor.putBoolean("q_isDelivering", false)
+        editor.apply()
+        LocationServices.getFusedLocationProviderClient(this).removeLocationUpdates(mLocationCallback)
+        stopForeground(true)
+        stopSelf(SERVICE_START_ID)
     }
 
     private fun updateNotificationContentText(contentText: String) {
@@ -151,10 +165,18 @@ class LocationService : Service() {
         if (intent.action != null) {
             when (intent.action) {
                 ACTION_START_LOCATION_SERVICE -> startLocationService()
-//                ACTION_STOP_LOCATION_SERVICE -> stopLocationService()
+                ACTION_STOP_LOCATION_SERVICE -> stopLocationService()
             }
         }
-        return START_STICKY_COMPATIBILITY //서비스가 강제로 종료되더라도 시스템이 재시작하도록 설정
+        SERVICE_START_ID = startId
+        return START_NOT_STICKY
+//        return START_STICKY
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        notificationManager.cancel(LOCATION_SERVICE_ID)
+        stopLocationService()
+        Log.i("LocationService", "onDestroy")
+    }
 }

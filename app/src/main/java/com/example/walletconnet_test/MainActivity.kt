@@ -29,24 +29,31 @@ class MainActivity : AppCompatActivity() {
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
     private var locationCallback: GeolocationPermissions.Callback? = null
     val ACTION_START_LOCATION_SERVICE = "startLocationService"
-//    val ACTION_STOP_LOCATION_SERVICE = "stopLocationService"
+    val ACTION_STOP_LOCATION_SERVICE = "stopLocationService"
+    private var isAlreadyStartedLocationService = false
 
 //    private var locationService: LocationService? = null
+    private lateinit var serviceIntent: Intent
 
     private lateinit var notificationManager: NotificationManager
     private lateinit var builderT: NotificationCompat.Builder
 
     private fun startBackgroundService() {
-        val serviceIntent = Intent(this@MainActivity, LocationService::class.java)
+        serviceIntent = Intent(this@MainActivity, LocationService::class.java)
         serviceIntent.action = ACTION_START_LOCATION_SERVICE
         startService(serviceIntent)
         Log.i("background", "startLocationService")
     }
 
+    private fun stopBackgroundService() {
+        serviceIntent.action = ACTION_STOP_LOCATION_SERVICE
+        stopService(serviceIntent)
+        Log.i("background", "stopLocationService")
+    }
+
     private fun alertNotification(contentString: String) {
-        Log.i("testNoti", "alertNotificationtest()")
         notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channelId = "test_notification_channel"
+        val channelId = "impo_notification_channel"
         val resultIntent = Intent()
         val pendingIntent = PendingIntent.getActivity(
             this,
@@ -57,7 +64,6 @@ class MainActivity : AppCompatActivity() {
             } else {
                 PendingIntent.FLAG_UPDATE_CURRENT
             }
-
         )
 
         builderT = NotificationCompat.Builder(this, channelId)
@@ -114,7 +120,9 @@ class MainActivity : AppCompatActivity() {
                 REQUEST_LOCATION_PERMISSION
             )
             startBackgroundService()
-        } else {
+            isAlreadyStartedLocationService = true
+        }
+        if (!isAlreadyStartedLocationService) {
             startBackgroundService()
         }
 
@@ -279,6 +287,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        stopBackgroundService()
+        Log.i("background", "onDestroy")
     }
 
     override fun onRequestPermissionsResult(
@@ -323,6 +333,7 @@ class MainActivity : AppCompatActivity() {
     override fun onBackPressed() {
         if (isToastActive) {
             super.onBackPressed()
+            finish()
         } else {
             showFinishToast()
         }

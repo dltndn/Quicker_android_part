@@ -25,7 +25,7 @@ class SendLocationToServer {
 
     init {
         val retrofit = Retrofit.Builder()
-            .baseUrl("http://172.20.10.4:9000/")
+            .baseUrl("https://quickertest.shop/")
             .addConverterFactory(GsonConverterFactory.create())
             .build()
 
