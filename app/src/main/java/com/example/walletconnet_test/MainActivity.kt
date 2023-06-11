@@ -19,13 +19,17 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import java.io.File
 import java.net.URISyntaxException
+import java.text.SimpleDateFormat
 import java.util.jar.Manifest
 import java.util.*
 
 class MainActivity : AppCompatActivity() {
     private val REQUEST_SELECT_FILE = 100
     private val REQUEST_LOCATION_PERMISSION = 100
+    private val CAMERA_PERMISSION_REQUEST_CODE = 1001
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
     private var locationCallback: GeolocationPermissions.Callback? = null
     val ACTION_START_LOCATION_SERVICE = "startLocationService"
@@ -122,6 +126,20 @@ class MainActivity : AppCompatActivity() {
             startBackgroundService()
             isAlreadyStartedLocationService = true
         }
+
+        // 카메라 권한 요청
+        if (ContextCompat.checkSelfPermission(
+                this@MainActivity,
+                android.Manifest.permission.CAMERA
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(android.Manifest.permission.CAMERA),
+                CAMERA_PERMISSION_REQUEST_CODE
+            )
+        }
+
         if (!isAlreadyStartedLocationService) {
             startBackgroundService()
         }
@@ -160,6 +178,7 @@ class MainActivity : AppCompatActivity() {
                     val isCompletedOrder = quickerIntent.data?.getQueryParameter("isCompletedOrder")
                     Log.i("wallet", walletAddress.toString())
                     Log.i("isDelivering", isDelivering.toString())
+                    Log.i("intent data", quickerIntent.data.toString())
                     if (walletAddress != null) {
                         editor.putString("q_walletAddress", walletAddress.toString())
                         editor.apply()
@@ -183,6 +202,13 @@ class MainActivity : AppCompatActivity() {
                     return true
                 }
                 if (request?.url?.toString()?.startsWith("https:") == true) {
+                    val wcUri = Uri.parse(deepLink)
+                    val httpsIntent = Intent(Intent.ACTION_VIEW, wcUri)
+                    httpsIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    startActivity(httpsIntent)
+                    return true
+                }
+                if (request?.url?.toString()?.startsWith("http:") == true) {
                     val wcUri = Uri.parse(deepLink)
                     val httpsIntent = Intent(Intent.ACTION_VIEW, wcUri)
                     httpsIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -267,23 +293,62 @@ class MainActivity : AppCompatActivity() {
                 if (this@MainActivity.filePathCallback != null) {
                     this@MainActivity.filePathCallback?.onReceiveValue(null)
                 }
+
                 this@MainActivity.filePathCallback = filePathCallback
 
+                val captureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+
+                // 카메라로 촬영한 이미지를 저장할 임시 파일 생성
+                val imageFile: File? = createImageFile()
+                imageFile?.let {
+                    val uri: Uri = FileProvider.getUriForFile(
+                        this@MainActivity,
+                        "com.example.walletconnet_test.fileprovider",
+                        it
+                    )
+                    captureIntent.putExtra(MediaStore.EXTRA_OUTPUT, uri)
+                }
+
+                val galleryIntent = Intent(Intent.ACTION_GET_CONTENT)
+                galleryIntent.addCategory(Intent.CATEGORY_OPENABLE)
+                galleryIntent.type = "*/*"
+
+                val chooserIntent = Intent.createChooser(galleryIntent, "Select File")
+                chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(captureIntent))
+
                 try {
-                    startActivityForResult(intent, REQUEST_SELECT_FILE)
+                    activity.startActivityForResult(chooserIntent, REQUEST_SELECT_FILE)
                 } catch (e: ActivityNotFoundException) {
                     this@MainActivity.filePathCallback = null
                     Toast.makeText(activity, "Cannot open file chooser", Toast.LENGTH_LONG).show()
                     return false
                 }
-
                 return true
             }
-
+            override fun onPermissionRequest(request: PermissionRequest) {
+                val requestedResources = request.resources
+                for (r in requestedResources) {
+                    if (r == PermissionRequest.RESOURCE_VIDEO_CAPTURE) {
+                        request.grant(arrayOf(PermissionRequest.RESOURCE_VIDEO_CAPTURE))
+                        break
+                    }
+                }
+            }
         }
         myWebView.loadUrl("https://web-quicker-reactjs-luj2cle2iiwho.sel3.cloudtype.app/")
-
+//        myWebView.loadUrl("https://web-quicker-reactjs-dihik2mlimmajap.sel4.cloudtype.app/testQR")
     }
+
+    private fun createImageFile(): File? {
+        val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val storageDir: File? = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+        return File.createTempFile(
+            "JPEG_${timeStamp}_",
+            ".jpg",
+            storageDir
+        )
+    }
+
 
     override fun onDestroy() {
         super.onDestroy()
@@ -307,25 +372,38 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    //
     // 파일 선택 다이얼로그에서 선택한 결과를 처리한다.
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        Log.i("requestCode123", data.toString())
         if (requestCode == REQUEST_SELECT_FILE) {
             if (filePathCallback == null) return
             val result = if (data == null || resultCode != RESULT_OK) null else data.data
             if (result == null) {
-                filePathCallback?.onReceiveValue(null)
+                // If data is null, check if the file was saved to the specified URI
+                val imageFile = getImageFileFromUri()
+                Log.i("requestCode123", imageFile.toString())
+                if (imageFile != null) {
+                    filePathCallback?.onReceiveValue(arrayOf(Uri.fromFile(imageFile)))
+                } else {
+                    filePathCallback?.onReceiveValue(null)
+                }
             } else {
+                Log.i("requestCode123", result.toString())
                 filePathCallback?.onReceiveValue(arrayOf(result))
             }
             filePathCallback = null
         } else {
             super.onActivityResult(requestCode, resultCode, data)
         }
+
     }
 
+    private fun getImageFileFromUri(): File? {
+        val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val storageDir: File? = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+        return File(storageDir, "JPEG_$timeStamp.jpg")
+    }
 
-    //
     private var isToastActive = false
     private var currentToast: Toast? = null
 
