@@ -16,7 +16,7 @@ data class DataResponse(val address: String, val X: Double, val Y: Double)
 data class DataRequest(val address: String, val X: Double, val Y: Double)
 
 interface MyApiService {
-    @POST("test")
+    @POST("current-deliver-location")
     fun getUser(@Body request: DataRequest): Call<DataResponse>
 }
 

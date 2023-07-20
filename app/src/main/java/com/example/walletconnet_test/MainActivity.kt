@@ -222,6 +222,14 @@ class MainActivity : AppCompatActivity() {
                     startActivity(nmapIntent)
                     return true
                 }
+                if (request?.url?.toString()?.startsWith("kakaomap:") == true) {
+                    val nmapUri = Uri.parse(deepLink)
+                    val nmapIntent = Intent(Intent.ACTION_VIEW, nmapUri)
+                    nmapIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    startActivity(nmapIntent)
+                    return true
+                }
+
                 return super.shouldOverrideUrlLoading(view, request)
             }
         }
